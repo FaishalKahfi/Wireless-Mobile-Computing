@@ -1,11 +1,11 @@
 {
   "name": "Task Manager PWA",
   "short_name": "TaskManager",
-  "description": "Aplikasi Task Manager SPA dan PWA sederhana.",
+  "description": "Aplikasi Task Manager SPA dan PWA modern dengan IndexedDB.",
   "start_url": "index.html",
   "display": "standalone",
-  "background_color": "#f4f4f4",
-  "theme_color": "#4a90e2",
+  "background_color": "#f8f9fb",
+  "theme_color": "#4f46e5",
   "icons": [
     {
       "src": "favicon-192.png",

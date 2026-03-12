@@ -3,201 +3,820 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Simple PWA</title>
+    <title>Task Manager PWA</title>
+    <meta name="description" content="Aplikasi Task Manager modern dengan PWA dan IndexedDB">
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#4a90e2">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --primary: #4a90e2;
-            --dark: #333;
-            --light: #f4f4f4;
+            --bg: #f8f9fb;
+            --white: #ffffff;
+            --text: #1e1e2e;
+            --text-secondary: #6b7280;
+            --border: #e5e7eb;
+            --accent: #3b82f6; /* Lighter blue */
+            --accent-hover: #2563eb;
+            --green: #10b981;
+            --green-bg: #ecfdf5;
+            --yellow: #f59e0b;
+            --yellow-bg: #fffbeb;
+            --red: #ef4444;
+            --red-bg: #fef2f2;
+            --radius: 12px;
+            --radius-md: 16px;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.03);
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
         }
-        body { font-family: sans-serif; margin: 0; background: var(--light); }
-        header { background: var(--primary); color: white; padding: 1rem; text-align: center; }
 
-        /* SPA Navigation */
-        nav { display: flex; justify-content: center; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        nav a { padding: 1rem; text-decoration: none; color: var(--dark); cursor: pointer; }
-        nav a:hover { background: #eee; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        .page { display: none; padding: 20px; max-width: 600px; margin: auto; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* ===== HEADER ===== */
+        header {
+            background: var(--white);
+            padding: 1.5rem 1.5rem 1rem;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        header p {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        /* ===== TOP NAV ===== */
+        nav {
+            background: var(--white);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            z-index: 100;
+            position: sticky;
+            top: 0;
+            padding: 0 1rem;
+        }
+
+        nav a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 1rem 1.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.2s, border-bottom 0.2s;
+            border-bottom: 2px solid transparent;
+        }
+
+        nav a .nav-icon { font-size: 1.1rem; }
+
+        nav a.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        /* ===== PAGES ===== */
+        .page {
+            display: none;
+            padding: 2rem 1.5rem;
+            max-width: 600px;
+            margin: 0 auto;
+            animation: fadeIn 0.3s ease;
+        }
         .page.active { display: block; }
 
-        /* UI Components */
-        .card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        button { background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; }
-        button:disabled { background: #ccc; }
-        .sync-status { font-size: 0.8rem; margin-top: 10px; color: #666; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ===== SECTION TITLE ===== */
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .section-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: -0.5rem;
+            margin-bottom: 1.25rem;
+        }
+
+        /* ===== STATS ===== */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-box {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 1.25rem 1rem;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-box:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .stat-box .num {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .stat-box.green .num { color: var(--green); }
+        .stat-box.yellow .num { color: var(--yellow); }
+
+        .stat-box .label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        /* ===== CARDS ===== */
+        .card {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 1.5rem;
+        }
+
+        .card-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+            color: var(--text);
+        }
+
+        /* ===== SYNC SECTION ===== */
+        .sync-info {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+            line-height: 1.5;
+        }
+
+        .sync-status {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.75rem;
+        }
+
+        /* ===== FORMS ===== */
+        .form-group {
+            margin-bottom: 0.85rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 0.35rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--white);
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            color: var(--text);
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        .form-input::placeholder { color: #9ca3af; }
+
+        textarea.form-input { resize: vertical; min-height: 70px; }
+
+        /* Priority pills */
+        .priority-pills {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .pill {
+            flex: 1;
+            padding: 0.5rem;
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 500;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--white);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pill:hover { background: var(--bg); }
+
+        .pill.active-low { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+        .pill.active-medium { background: var(--yellow-bg); border-color: var(--yellow); color: var(--yellow); }
+        .pill.active-high { background: var(--red-bg); border-color: var(--red); color: var(--red); }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 0.75rem 1.5rem;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+        .btn-primary:hover { background: var(--accent-hover); }
+
+        .btn-block { width: 100%; }
+
+        .btn-sm {
+            padding: 0.4rem 0.75rem;
+            font-size: 0.7rem;
+        }
+
+        .btn-outline-red {
+            background: transparent;
+            border: 1px solid #fca5a5;
+            color: var(--red);
+        }
+        .btn-outline-red:hover { background: var(--red-bg); }
+
+        /* ===== TASK LIST ===== */
+        .list-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+        }
+
+        .list-header h3 {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .badge {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: var(--border);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+        }
+
+        .task-item {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 1rem 1.25rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+        }
+
+        .task-item:hover {
+            box-shadow: var(--shadow);
+            transform: translateY(-1px);
+        }
+
+        .task-item.done { opacity: 0.55; }
+        .task-item.done .task-name { text-decoration: line-through; }
+
+        /* left accent line */
+        .task-item::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 3px;
+            border-radius: 12px 0 0 12px;
+        }
+        .task-item.p-high::before { background: var(--red); }
+        .task-item.p-medium::before { background: var(--yellow); }
+        .task-item.p-low::before { background: var(--green); }
+
+        /* checkbox */
+        .check {
+            flex-shrink: 0;
+            width: 20px; height: 20px;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 1px;
+            transition: all 0.2s;
+            background: var(--white);
+        }
+
+        .check:hover { border-color: var(--accent); }
+
+        .check.checked {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .check.checked::after {
+            content: '✓';
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .task-body { flex: 1; min-width: 0; }
+
+        .task-name {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--text);
+        }
+
+        .task-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .task-footer {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .priority-tag {
+            font-size: 0.6rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .priority-tag.high { background: var(--red-bg); color: var(--red); }
+        .priority-tag.medium { background: var(--yellow-bg); color: var(--yellow); }
+        .priority-tag.low { background: var(--green-bg); color: var(--green); }
+
+        .task-date {
+            font-size: 0.75rem;
+            color: #9ca3af;
+        }
+
+        .task-actions { flex-shrink: 0; }
+
+        /* ===== EMPTY STATE ===== */
+        .empty {
+            text-align: center;
+            padding: 2.5rem 1rem;
+            color: var(--text-secondary);
+        }
+
+        .empty .icon { font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.4; }
+        .empty p { font-size: 0.85rem; }
+
+        /* ===== DIVIDER ===== */
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 1.25rem 0;
+        }
+
+        /* ===== TOAST ===== */
+        .toast {
+            position: fixed;
+            top: 0.75rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(-120%);
+            background: var(--text);
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 500;
+            padding: 0.65rem 1.25rem;
+            border-radius: 8px;
+            z-index: 999;
+            transition: transform 0.35s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ===== SPINNER ===== */
+        .spinner {
+            width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
+<div class="toast" id="toast"></div>
+
 <header>
-    <h1>Simple Task Manager</h1>
+    <h1>📋 Task Manager</h1>
+    <p>PWA &middot; IndexedDB Storage</p>
 </header>
 
+<!-- TOP NAV -->
 <nav>
-    <a onclick="navigateTo('home')">Beranda</a>
-    <a onclick="navigateTo('tasks')">Daftar Tugas</a>
+    <a onclick="navigateTo('home')" class="active" id="nav-home">
+        <span class="nav-icon">🏠</span>
+        Beranda
+    </a>
+    <a onclick="navigateTo('tasks')" id="nav-tasks">
+        <span class="nav-icon">📝</span>
+        Tugas
+    </a>
 </nav>
 
+<!-- HOME -->
 <section id="home" class="page active">
-    <h2>Selamat Datang</h2>
-    <p>Ini adalah aplikasi SPA & PWA sederhana yang menyimpan data di LocalStorage dan melakukan sinkronisasi via JSON.</p>
+    <h2 class="section-title">Dashboard</h2>
+
+    <div class="stats">
+        <div class="stat-box">
+            <div class="num" id="totalTasks">0</div>
+            <div class="label">Total</div>
+        </div>
+        <div class="stat-box green">
+            <div class="num" id="completedTasks">0</div>
+            <div class="label">Selesai</div>
+        </div>
+        <div class="stat-box yellow">
+            <div class="num" id="pendingTasks">0</div>
+            <div class="label">Belum</div>
+        </div>
+    </div>
+
     <div class="card">
-        <h3>Status Sinkronisasi</h3>
-        <button id="syncBtn">Sinkronkan Data Sekarang</button>
+        <div class="card-label">🔄 Sinkronisasi</div>
+        <p class="sync-info">Ambil data terbaru dari server dan gabungkan dengan data lokal tanpa menghapus tugas yang sudah ada.</p>
+        <button class="btn btn-primary" id="syncBtn">
+            <span id="syncBtnText">Sinkronkan Sekarang</span>
+        </button>
         <p class="sync-status" id="statusMsg">Belum ada data disinkronkan.</p>
     </div>
 </section>
 
+<!-- TASKS -->
 <section id="tasks" class="page">
-    <h2>Daftar Tugas</h2>
+    <h2 class="section-title">Daftar Tugas</h2>
 
     <div class="card">
-        <h3>Tambah Tugas Manual</h3>
-        <input type="text" id="taskTitle" placeholder="Judul Tugas" style="width: 90%; padding: 8px; margin-bottom: 10px;">
-        <textarea id="taskDesc" placeholder="Deskripsi" style="width: 90%; padding: 8px; margin-bottom: 10px;"></textarea>
-        <button onclick="addTask()">Simpan ke Lokal</button>
+        <div class="card-label">Tambah Tugas Baru</div>
+
+        <div class="form-group">
+            <label for="taskTitle">Judul</label>
+            <input type="text" id="taskTitle" class="form-input" placeholder="Contoh: Belajar React JS">
+        </div>
+
+        <div class="form-group">
+            <label for="taskDesc">Deskripsi</label>
+            <textarea id="taskDesc" class="form-input" placeholder="Deskripsikan tugas..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Prioritas</label>
+            <div class="priority-pills">
+                <button type="button" class="pill" data-p="low" onclick="setPriority('low',this)">Rendah</button>
+                <button type="button" class="pill active-medium" data-p="medium" onclick="setPriority('medium',this)">Sedang</button>
+                <button type="button" class="pill" data-p="high" onclick="setPriority('high',this)">Tinggi</button>
+            </div>
+        </div>
+
+        <button class="btn btn-primary btn-block" onclick="addTask()">Simpan Tugas</button>
     </div>
 
-    <hr>
+    <div class="divider"></div>
+
+    <div class="list-header">
+        <h3>Semua Tugas</h3>
+        <span class="badge" id="taskCount">0 tugas</span>
+    </div>
+
     <div id="taskList">
-        <p>Tidak ada tugas tersedia. Silakan sinkronkan data.</p>
+        <div class="empty">
+            <div class="icon">📭</div>
+            <p>Belum ada tugas.</p>
+        </div>
     </div>
 </section>
 
 <script>
-    // --- 1. SPA Routing Logic ---
+    // === SPA Routing ===
     function navigateTo(pageId) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById(pageId).classList.add('active');
-        if(pageId === 'tasks') renderTasks();
+        document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+        document.getElementById('nav-' + pageId).classList.add('active');
+        if (pageId === 'tasks') renderTasks();
+        if (pageId === 'home') updateStats();
     }
 
-    // --- 2. Data Logic (LocalStorage & Fetch) ---
-    const DB_KEY = 'my_app_tasks';
-    const JSON_URL = 'data.json'; // Pastikan file ini ada di folder yang sama
+    // === Toast ===
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2500);
+    }
 
+    // === IndexedDB ===
+    const DB_NAME = 'TaskManagerDB';
+    const DB_VER = 1;
+    const STORE = 'tasks';
+    const JSON_URL = 'data.json';
 
-
-
-    async function syncData() {
-    const btn = document.getElementById('syncBtn');
-    const msg = document.getElementById('statusMsg');
-
-    btn.disabled = true;
-    msg.innerText = "Sinkronisasi...";
-
-    try {
-        const response = await fetch(JSON_URL);
-        if (!response.ok) throw new Error('Gagal mengambil file JSON');
-
-        const dataFromServer = await response.json();
-
-        // Ambil data yang sudah ada di lokal saat ini
-        const localData = JSON.parse(localStorage.getItem(DB_KEY) || '[]');
-
-        // Logika Merge: Masukkan data dari server hanya jika judulnya belum ada di lokal
-        const mergedData = [...localData];
-
-        dataFromServer.forEach(serverTask => {
-            const isDuplicate = localData.some(localTask => localTask.title === serverTask.title);
-            if (!isDuplicate) {
-                mergedData.push(serverTask);
-            }
+    function openDB() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(DB_NAME, DB_VER);
+            req.onupgradeneeded = e => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE)) {
+                    const s = db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+                    s.createIndex('by_priority', 'priority', { unique: false });
+                    s.createIndex('by_completed', 'completed', { unique: false });
+                    s.createIndex('by_createdAt', 'createdAt', { unique: false });
+                }
+            };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
         });
-
-        // Simpan hasil penggabungan kembali ke LocalStorage
-        localStorage.setItem(DB_KEY, JSON.stringify(mergedData));
-
-        msg.innerText = `Terakhir sinkron: ${new Date().toLocaleTimeString()}`;
-        renderTasks();
-        alert('Sinkronisasi berhasil! Data server ditambahkan tanpa menghapus data lokal Anda.');
-
-    } catch (error) {
-        msg.innerText = "Gagal sinkron: " + error.message;
-    } finally {
-        btn.disabled = false;
     }
-}
 
+    async function getAll() {
+        const db = await openDB();
+        return new Promise((res, rej) => {
+            const r = db.transaction(STORE, 'readonly').objectStore(STORE).getAll();
+            r.onsuccess = () => res(r.result);
+            r.onerror = () => rej(r.error);
+        });
+    }
 
+    async function addToDB(task) {
+        const db = await openDB();
+        return new Promise((res, rej) => {
+            const r = db.transaction(STORE, 'readwrite').objectStore(STORE).add(task);
+            r.onsuccess = () => res(r.result);
+            r.onerror = () => rej(r.error);
+        });
+    }
 
-    function renderTasks() {
-        const listContainer = document.getElementById('taskList');
-        const rawData = localStorage.getItem(DB_KEY);
+    async function putToDB(task) {
+        const db = await openDB();
+        return new Promise((res, rej) => {
+            const r = db.transaction(STORE, 'readwrite').objectStore(STORE).put(task);
+            r.onsuccess = () => res(r.result);
+            r.onerror = () => rej(r.error);
+        });
+    }
 
-        if (!rawData || JSON.parse(rawData).length === 0) {
-            listContainer.innerHTML = '<p>Tidak ada tugas tersedia.</p>';
+    async function deleteFromDB(id) {
+        const db = await openDB();
+        return new Promise((res, rej) => {
+            const r = db.transaction(STORE, 'readwrite').objectStore(STORE).delete(id);
+            r.onsuccess = () => res();
+            r.onerror = () => rej(r.error);
+        });
+    }
+
+    // === Sync ===
+    async function syncData() {
+        const btn = document.getElementById('syncBtn');
+        const btnText = document.getElementById('syncBtnText');
+        const msg = document.getElementById('statusMsg');
+
+        btn.disabled = true;
+        btnText.innerHTML = '<span class="spinner"></span> Sinkronisasi...';
+
+        try {
+            const resp = await fetch(JSON_URL);
+            if (!resp.ok) throw new Error('Gagal mengambil data');
+            const serverData = await resp.json();
+            const localData = await getAll();
+
+            let added = 0;
+            for (const st of serverData) {
+                if (!localData.some(lt => lt.title === st.title)) {
+                    const t = { ...st };
+                    delete t.id;
+                    t.createdAt = t.createdAt || new Date().toISOString();
+                    t.completed = t.completed ? 1 : 0;
+                    t.priority = t.priority || 'medium';
+                    await addToDB(t);
+                    added++;
+                }
+            }
+
+            msg.textContent = `Terakhir sinkron: ${new Date().toLocaleTimeString()}`;
+            renderTasks();
+            updateStats();
+            showToast(added > 0 ? `${added} tugas baru ditambahkan!` : 'Semua data sudah sinkron.');
+        } catch (err) {
+            msg.textContent = 'Gagal: ' + err.message;
+            showToast('Gagal sinkronisasi.');
+        } finally {
+            btn.disabled = false;
+            btnText.textContent = 'Sinkronkan Sekarang';
+        }
+    }
+
+    // === Render ===
+    async function renderTasks() {
+        const container = document.getElementById('taskList');
+        const tasks = await getAll();
+
+        document.getElementById('taskCount').textContent = `${tasks.length} tugas`;
+
+        if (tasks.length === 0) {
+            container.innerHTML = '<div class="empty"><div class="icon">📭</div><p>Belum ada tugas.</p></div>';
             return;
         }
 
-        const tasks = JSON.parse(rawData);
-        listContainer.innerHTML = tasks.map((task, index) => `
-            <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <strong>${task.title}</strong>
-                    <p style="margin: 5px 0 0 0;">${task.description}</p>
+        tasks.sort((a, b) => {
+            if (a.completed !== b.completed) return a.completed ? 1 : -1;
+            return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+
+        container.innerHTML = tasks.map(t => `
+            <div class="task-item p-${t.priority} ${t.completed ? 'done' : ''}">
+                <div class="check ${t.completed ? 'checked' : ''}" onclick="toggleComplete(${t.id})"></div>
+                <div class="task-body">
+                    <div class="task-name">${esc(t.title)}</div>
+                    <div class="task-desc">${esc(t.description)}</div>
+                    <div class="task-footer">
+                        <span class="priority-tag ${t.priority}">${priLabel(t.priority)}</span>
+                        <span class="task-date">${fmtDate(t.createdAt)}</span>
+                    </div>
                 </div>
-                <button onclick="deleteTask(${index})" style="background: #e74c3c; padding: 5px 10px;">Hapus</button>
+                <div class="task-actions">
+                    <button class="btn btn-sm btn-outline-red" onclick="deleteTask(${t.id})">Hapus</button>
+                </div>
             </div>
         `).join('');
     }
 
-    // Fungsi Hapus Tugas
-    function deleteTask(index) {
+    // === Task Ops ===
+    let selectedPriority = 'medium';
+
+    function setPriority(p, el) {
+        selectedPriority = p;
+        document.querySelectorAll('.pill').forEach(b => {
+            b.className = 'pill';
+        });
+        el.classList.add('active-' + p);
+    }
+
+    async function addTask() {
+        const ti = document.getElementById('taskTitle');
+        const de = document.getElementById('taskDesc');
+
+        if (!ti.value.trim() || !de.value.trim()) {
+            showToast('Harap isi semua kolom!');
+            return;
+        }
+
+        await addToDB({
+            title: ti.value.trim(),
+            description: de.value.trim(),
+            priority: selectedPriority,
+            completed: 0,
+            createdAt: new Date().toISOString()
+        });
+
+        ti.value = '';
+        de.value = '';
+        selectedPriority = 'medium';
+        document.querySelectorAll('.pill').forEach(b => b.className = 'pill');
+        document.querySelector('.pill[data-p="medium"]').classList.add('active-medium');
+
+        renderTasks();
+        updateStats();
+        showToast('Tugas berhasil disimpan!');
+    }
+
+    async function deleteTask(id) {
         if (confirm('Hapus tugas ini?')) {
-            const tasks = JSON.parse(localStorage.getItem(DB_KEY));
-            tasks.splice(index, 1); // Hapus 1 item berdasarkan index
-            localStorage.setItem(DB_KEY, JSON.stringify(tasks));
-            renderTasks(); // Refresh tampilan
+            await deleteFromDB(id);
+            renderTasks();
+            updateStats();
+            showToast('Tugas dihapus.');
         }
     }
 
-    function addTask() {
-    const titleInput = document.getElementById('taskTitle');
-    const descInput = document.getElementById('taskDesc');
-
-    if (titleInput.value === '' || descInput.value === '') {
-        alert('Harap isi semua kolom!');
-        return;
+    async function toggleComplete(id) {
+        const tasks = await getAll();
+        const task = tasks.find(t => t.id === id);
+        if (task) {
+            task.completed = task.completed ? 0 : 1;
+            await putToDB(task);
+            renderTasks();
+            updateStats();
+        }
     }
 
-    const newTask = {
-        title: titleInput.value,
-        description: descInput.value
-    };
+    // === Helpers ===
+    function esc(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
 
-    // Ambil data lama dari LocalStorage
-    const rawData = localStorage.getItem(DB_KEY);
-    const tasks = rawData ? JSON.parse(rawData) : [];
+    function priLabel(p) {
+        return { low: 'Rendah', medium: 'Sedang', high: 'Tinggi' }[p] || 'Sedang';
+    }
 
-    // Tambahkan tugas baru ke array (di posisi paling atas)
-    tasks.unshift(newTask);
+    function fmtDate(d) {
+        if (!d) return '';
+        return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
 
-    // Simpan kembali ke LocalStorage
-    localStorage.setItem(DB_KEY, JSON.stringify(tasks));
+    // === Stats ===
+    async function updateStats() {
+        const tasks = await getAll();
+        document.getElementById('totalTasks').textContent = tasks.length;
+        document.getElementById('completedTasks').textContent = tasks.filter(t => t.completed).length;
+        document.getElementById('pendingTasks').textContent = tasks.filter(t => !t.completed).length;
+    }
 
-    // Bersihkan form dan refresh tampilan
-    titleInput.value = '';
-    descInput.value = '';
-    renderTasks();
-    alert('Tugas berhasil disimpan di lokal!');
-}
-
-
+    // === Init ===
     document.getElementById('syncBtn').addEventListener('click', syncData);
 
-    // --- 3. Service Worker Registration (PWA) ---
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('sw.js')
-                .then(reg => console.log('SW Registered!', reg))
-                .catch(err => console.log('SW Failed!', err));
+                .then(r => console.log('SW Registered', r))
+                .catch(e => console.log('SW Failed', e));
         });
     }
+
+    updateStats();
 </script>
 </body>
 </html>
