@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📋</text></svg>">
-    
+
     <style>
         :root {
             --bg: #f8f9fb;
@@ -441,6 +441,56 @@
             margin: 1.25rem 0;
         }
 
+        /* ===== SEARCH & FILTER ===== */
+        .search-box {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+
+        .filter-tab {
+            background: transparent;
+            border: none;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-tab:hover {
+            color: var(--text);
+            background: var(--bg);
+        }
+
+        .filter-tab.active {
+            color: var(--accent);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        /* Due Date Badge */
+        .due-badge {
+            font-size: 0.6rem;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .due-badge.overdue { background: var(--red-bg); color: var(--red); }
+        .due-badge.soon { background: var(--yellow-bg); color: var(--yellow); }
+        .due-badge.normal { background: var(--border); color: var(--text-secondary); }
+
         /* ===== TOAST ===== */
         .toast {
             position: fixed;
@@ -473,11 +523,149 @@
         }
 
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal {
+            background: var(--white);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transform: translateY(20px);
+            transition: transform 0.2s ease;
+        }
+
+        .modal-overlay.show .modal {
+            transform: translateY(0);
+        }
+
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .modal-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-outline:hover { background: var(--bg); }
+
+        .btn-danger {
+            background: var(--red);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-danger:hover { background: #dc2626; }
     </style>
 </head>
 <body>
 
 <div class="toast" id="toast"></div>
+
+<!-- DELETE MODAL -->
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal">
+        <h3 class="modal-title">Konfirmasi Hapus</h3>
+        <p class="modal-desc">Apakah Anda yakin ingin menghapus tugas ini? Tindakan ini tidak dapat dibatalkan.</p>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeDeleteModal()">Batal</button>
+            <button class="btn btn-danger" onclick="confirmDelete()">Hapus</button>
+        </div>
+    </div>
+</div>
+
+<!-- CLEAR COMPLETED MODAL -->
+<div class="modal-overlay" id="clearModal">
+    <div class="modal">
+        <h3 class="modal-title">Bersihkan Tugas Selesai</h3>
+        <p class="modal-desc">Apakah Anda yakin ingin menghapus <strong>semua</strong> tugas yang sudah selesai? Tindakan ini tidak dapat dibatalkan.</p>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeClearModal()">Batal</button>
+            <button class="btn btn-danger" onclick="confirmClearCompleted()">Bersihkan</button>
+        </div>
+    </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal">
+        <h3 class="modal-title">Edit Tugas</h3>
+        
+        <div class="form-group mt-3">
+            <label for="editTaskTitle">Judul</label>
+            <input type="text" id="editTaskTitle" class="form-input" placeholder="Edit judul tugas">
+        </div>
+
+        <div class="form-group">
+            <label for="editTaskDesc">Deskripsi</label>
+            <textarea id="editTaskDesc" class="form-input" placeholder="Edit deskripsi..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Prioritas</label>
+            <div class="priority-pills">
+                <button type="button" class="pill edit-pill" data-p="low" onclick="setEditPriority('low',this)">Rendah</button>
+                <button type="button" class="pill edit-pill" data-p="medium" onclick="setEditPriority('medium',this)">Sedang</button>
+                <button type="button" class="pill edit-pill" data-p="high" onclick="setEditPriority('high',this)">Tinggi</button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="editTaskDate">Tenggat Waktu (Opsional)</label>
+            <input type="date" id="editTaskDate" class="form-input">
+        </div>
+
+        <div class="modal-actions" style="margin-top: 1.5rem;">
+            <button class="btn btn-outline" onclick="closeEditModal()">Batal</button>
+            <button class="btn btn-primary" onclick="saveEditTask()">Simpan</button>
+        </div>
+    </div>
+</div>
 
 <header>
     <h1>📋 Task Manager</h1>
@@ -545,10 +733,15 @@
         <div class="form-group">
             <label>Prioritas</label>
             <div class="priority-pills">
-                <button type="button" class="pill" data-p="low" onclick="setPriority('low',this)">Rendah</button>
-                <button type="button" class="pill active-medium" data-p="medium" onclick="setPriority('medium',this)">Sedang</button>
-                <button type="button" class="pill" data-p="high" onclick="setPriority('high',this)">Tinggi</button>
+                <button type="button" class="pill add-pill" data-p="low" onclick="setPriority('low',this)">Rendah</button>
+                <button type="button" class="pill add-pill active-medium" data-p="medium" onclick="setPriority('medium',this)">Sedang</button>
+                <button type="button" class="pill add-pill" data-p="high" onclick="setPriority('high',this)">Tinggi</button>
             </div>
+        </div>
+
+        <div class="form-group">
+            <label for="taskDate">Tenggat Waktu (Opsional)</label>
+            <input type="date" id="taskDate" class="form-input">
         </div>
 
         <button class="btn btn-primary btn-block" onclick="addTask()">Simpan Tugas</button>
@@ -556,9 +749,22 @@
 
     <div class="divider"></div>
 
+    <div class="search-box">
+        <input type="text" id="searchInput" class="form-input" placeholder="Cari tugas..." oninput="handleSearch()">
+    </div>
+
+    <div class="filter-tabs">
+        <button class="filter-tab active" data-filter="all" onclick="setFilter('all')">Semua</button>
+        <button class="filter-tab" data-filter="active" onclick="setFilter('active')">Aktif</button>
+        <button class="filter-tab" data-filter="completed" onclick="setFilter('completed')">Selesai</button>
+    </div>
+
     <div class="list-header">
-        <h3>Semua Tugas</h3>
-        <span class="badge" id="taskCount">0 tugas</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <h3>Daftar Tugas</h3>
+            <span class="badge" id="taskCount">0</span>
+        </div>
+        <button class="btn btn-sm btn-outline-red" onclick="clearCompletedTasks()" id="clearCompletedBtn" style="display: none;">Bersihkan Selesai</button>
     </div>
 
     <div id="taskList">
@@ -689,9 +895,73 @@
     }
 
     // === Render ===
+    let currentFilter = 'all';
+    let searchQuery = '';
+
+    function handleSearch() {
+        searchQuery = document.getElementById('searchInput').value.toLowerCase();
+        renderTasks();
+    }
+
+    function setFilter(filterType) {
+        currentFilter = filterType;
+        document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector(`.filter-tab[data-filter="${filterType}"]`).classList.add('active');
+        renderTasks();
+    }
+
+    function clearCompletedTasks() {
+        document.getElementById('clearModal').classList.add('show');
+    }
+
+    function closeClearModal() {
+        document.getElementById('clearModal').classList.remove('show');
+    }
+
+    async function confirmClearCompleted() {
+        const tasks = await getAll();
+        const completed = tasks.filter(t => t.completed);
+        for(let t of completed) {
+            await deleteFromDB(t.id);
+        }
+        renderTasks();
+        updateStats();
+        closeClearModal();
+        showToast(`${completed.length} tugas dibersihkan.`);
+    }
+
+    function getDueDateInfo(dateString, isCompleted) {
+        if (!dateString) return '';
+        if (isCompleted) return `<span class="due-badge normal">📅 ${fmtDate(dateString)}</span>`;
+
+        const due = new Date(dateString);
+        due.setHours(23, 59, 59, 999);
+        const now = new Date();
+        const diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+
+        if (diffDays < 0) return `<span class="due-badge overdue">⚠️ Terlambat (${fmtDate(dateString)})</span>`;
+        if (diffDays === 0) return `<span class="due-badge soon">⏱️ Hari ini</span>`;
+        if (diffDays <= 2) return `<span class="due-badge soon">📅 ${diffDays} hari lagi</span>`;
+        
+        return `<span class="due-badge normal">📅 ${fmtDate(dateString)}</span>`;
+    }
+
     async function renderTasks() {
         const container = document.getElementById('taskList');
-        const tasks = await getAll();
+        let tasks = await getAll();
+
+        // Check if there are completed tasks to show clear button
+        const hasCompleted = tasks.some(t => t.completed);
+        document.getElementById('clearCompletedBtn').style.display = hasCompleted ? 'block' : 'none';
+
+        // Apply filters
+        if (currentFilter === 'active') tasks = tasks.filter(t => !t.completed);
+        if (currentFilter === 'completed') tasks = tasks.filter(t => t.completed);
+
+        // Apply search
+        if (searchQuery) {
+            tasks = tasks.filter(t => t.title.toLowerCase().includes(searchQuery) || t.description.toLowerCase().includes(searchQuery));
+        }
 
         document.getElementById('taskCount').textContent = `${tasks.length} tugas`;
 
@@ -713,10 +983,11 @@
                     <div class="task-desc">${esc(t.description)}</div>
                     <div class="task-footer">
                         <span class="priority-tag ${t.priority}">${priLabel(t.priority)}</span>
-                        <span class="task-date">${fmtDate(t.createdAt)}</span>
+                        ${getDueDateInfo(t.dueDate, t.completed)}
                     </div>
                 </div>
-                <div class="task-actions">
+                <div class="task-actions" style="display:flex; flex-direction:column; gap:5px;">
+                    <button class="btn btn-sm btn-outline-red" style="color:var(--text); border-color:var(--border);" onclick="openEditModal(${t.id})">Edit</button>
                     <button class="btn btn-sm btn-outline-red" onclick="deleteTask(${t.id})">Hapus</button>
                 </div>
             </div>
@@ -725,11 +996,21 @@
 
     // === Task Ops ===
     let selectedPriority = 'medium';
+    let editSelectedPriority = 'medium';
+    let taskToEditId = null;
 
     function setPriority(p, el) {
         selectedPriority = p;
-        document.querySelectorAll('.pill').forEach(b => {
-            b.className = 'pill';
+        document.querySelectorAll('.add-pill').forEach(b => {
+            b.className = 'pill add-pill';
+        });
+        el.classList.add('active-' + p);
+    }
+
+    function setEditPriority(p, el) {
+        editSelectedPriority = p;
+        document.querySelectorAll('.edit-pill').forEach(b => {
+            b.className = 'pill edit-pill';
         });
         el.classList.add('active-' + p);
     }
@@ -737,9 +1018,10 @@
     async function addTask() {
         const ti = document.getElementById('taskTitle');
         const de = document.getElementById('taskDesc');
+        const da = document.getElementById('taskDate');
 
         if (!ti.value.trim() || !de.value.trim()) {
-            showToast('Harap isi semua kolom!');
+            showToast('Harap isi judul dan deskripsi!');
             return;
         }
 
@@ -747,27 +1029,91 @@
             title: ti.value.trim(),
             description: de.value.trim(),
             priority: selectedPriority,
+            dueDate: da.value || null,
             completed: 0,
             createdAt: new Date().toISOString()
         });
 
         ti.value = '';
         de.value = '';
+        da.value = '';
         selectedPriority = 'medium';
-        document.querySelectorAll('.pill').forEach(b => b.className = 'pill');
-        document.querySelector('.pill[data-p="medium"]').classList.add('active-medium');
+        document.querySelectorAll('.add-pill').forEach(b => b.className = 'pill add-pill');
+        document.querySelector('.add-pill[data-p="medium"]').classList.add('active-medium');
 
         renderTasks();
         updateStats();
         showToast('Tugas berhasil disimpan!');
     }
 
-    async function deleteTask(id) {
-        if (confirm('Hapus tugas ini?')) {
-            await deleteFromDB(id);
+    async function openEditModal(id) {
+        const tasks = await getAll();
+        const task = tasks.find(t => t.id === id);
+        if(!task) return;
+
+        taskToEditId = id;
+        document.getElementById('editTaskTitle').value = task.title;
+        document.getElementById('editTaskDesc').value = task.description;
+        document.getElementById('editTaskDate').value = task.dueDate || '';
+        
+        editSelectedPriority = task.priority;
+        document.querySelectorAll('.edit-pill').forEach(b => b.className = 'pill edit-pill');
+        document.querySelector(`.edit-pill[data-p="${task.priority}"]`).classList.add('active-' + task.priority);
+
+        document.getElementById('editModal').classList.add('show');
+    }
+
+    function closeEditModal() {
+        taskToEditId = null;
+        document.getElementById('editModal').classList.remove('show');
+    }
+
+    async function saveEditTask() {
+        if(!taskToEditId) return;
+        const ti = document.getElementById('editTaskTitle').value.trim();
+        const de = document.getElementById('editTaskDesc').value.trim();
+        const da = document.getElementById('editTaskDate').value;
+
+        if (!ti || !de) {
+            showToast('Harap isi judul dan deskripsi!');
+            return;
+        }
+
+        const tasks = await getAll();
+        const task = tasks.find(t => t.id === taskToEditId);
+        if(!task) return;
+
+        task.title = ti;
+        task.description = de;
+        task.priority = editSelectedPriority;
+        task.dueDate = da || null;
+
+        await putToDB(task);
+        closeEditModal();
+        renderTasks();
+        updateStats();
+        showToast('Tugas diperbarui!');
+    }
+
+    let taskToDeleteId = null;
+
+    function deleteTask(id) {
+        taskToDeleteId = id;
+        document.getElementById('deleteModal').classList.add('show');
+    }
+
+    function closeDeleteModal() {
+        taskToDeleteId = null;
+        document.getElementById('deleteModal').classList.remove('show');
+    }
+
+    async function confirmDelete() {
+        if (taskToDeleteId !== null) {
+            await deleteFromDB(taskToDeleteId);
             renderTasks();
             updateStats();
             showToast('Tugas dihapus.');
+            closeDeleteModal();
         }
     }
 
