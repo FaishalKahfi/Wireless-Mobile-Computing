@@ -1,6 +1,6 @@
-Muhamad Aprijal
-
 Rachmad Taufik Deniarto
+
+Muhamad Aprijal
 
 Afwanda Rizqi
 
