@@ -7,3 +7,5 @@ Afwanda Rizqi
 Siti Alifya Safrina
 
 Jose Amaliya Ambarwati
+
+Faishal Kahfi
